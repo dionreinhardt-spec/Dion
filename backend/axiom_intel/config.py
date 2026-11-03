@@ -59,7 +59,7 @@ class Settings(BaseSettings):
     x_query: str = ""
     x_poll_s: float = Field(60, ge=30)
     x_max_posts_per_day: int = Field(100, ge=10, le=10000)
-    telegram_bot_token: SecretStr | None = None
+    reddit_client_id: SecretStr | None = None\n    reddit_client_secret: SecretStr | None = None\n    reddit_subreddits: str = ""\n    reddit_user_agent: str = "AxiomIntelligence/0.1 (authorized social analytics)"\n    reddit_poll_s: float = Field(120, ge=60)\n    telegram_bot_token: SecretStr | None = None
     telegram_read_channels: str = ""
     telegram_alert_chat_id: str = ""
     telegram_alerts_enabled: bool = False
