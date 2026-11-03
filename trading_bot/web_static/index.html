@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Lokales Dashboard für probabilistische Krypto-Analyse und Paper-Trading.">
+    <title>AI Paper Trader</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#main" aria-label="AI Paper Trader Start">
+          <span class="brand-mark" aria-hidden="true"><span></span></span>
+          <span>
+            <strong>AI PAPER TRADER</strong>
+            <small>Probability &amp; risk desk</small>
+          </span>
+        </a>
+        <div class="topbar-status">
+          <span class="connection"><i id="connection-dot"></i><span id="connection-label">Verbindung wird geprüft</span></span>
+          <span id="mode-badge" class="badge neutral">—</span>
+          <span class="badge paper">PAPER ONLY</span>
+        </div>
+      </header>
+
+      <main id="main">
+        <section class="command-bar" aria-labelledby="command-title">
+          <div>
+            <p class="eyebrow">Kontrollzentrum</p>
+            <h1 id="command-title">Markt prüfen, bevor Risiko entsteht.</h1>
+            <p id="source-line" class="subline">Noch keine Analyse geladen.</p>
+          </div>
+          <div class="command-actions">
+            <button id="scan-button" class="button primary" type="button">
+              <span class="button-icon" aria-hidden="true">⌁</span>
+              <span id="scan-label">Markt scannen</span>
+            </button>
+            <button id="paper-button" class="button secondary" type="button">
+              <span class="button-icon" aria-hidden="true">▣</span>
+              <span id="paper-label">Paper-Plan ausführen</span>
+            </button>
+          </div>
+        </section>
+
+        <div id="notice" class="notice hidden" role="status" aria-live="polite"></div>
+
+        <section class="gate-grid" aria-label="Qualitäts-Gates">
+          <article id="model-gate" class="gate-card pending">
+            <div class="gate-heading">
+              <span>01</span>
+              <p>Modell-Gate</p>
+              <strong class="gate-state">WARTET</strong>
+            </div>
+            <p class="gate-reason">Brier-Score und Kalibrierung werden nach dem Scan geprüft.</p>
+          </article>
+          <article id="backtest-gate" class="gate-card pending">
+            <div class="gate-heading">
+              <span>02</span>
+              <p>Backtest-Gate</p>
+              <strong class="gate-state">WARTET</strong>
+            </div>
+            <p class="gate-reason">Rendite nach Kosten, Stichprobe und Drawdown stehen noch aus.</p>
+          </article>
+          <article id="execution-gate" class="gate-card pending">
+            <div class="gate-heading">
+              <span>03</span>
+              <p>Ausführung</p>
+              <strong class="gate-state">GESPERRT</strong>
+            </div>
+            <p class="gate-reason">Nur bestätigte Paper-Setups dürfen das simulierte Ledger verändern.</p>
+          </article>
+        </section>
+
+        <section class="metric-grid" aria-label="Analysekennzahlen">
+          <article class="metric"><span>p(up), bester Coin</span><strong id="metric-probability">—</strong><small id="metric-symbol">Keine Daten</small></article>
+          <article class="metric"><span>Brier / Basis</span><strong id="metric-brier">—</strong><small>Kleiner ist besser</small></article>
+          <article class="metric"><span>Backtest netto</span><strong id="metric-return">—</strong><small id="metric-trades">0 Trades</small></article>
+          <article class="metric"><span>Max. Drawdown</span><strong id="metric-drawdown">—</strong><small>Walk-forward</small></article>
+          <article class="metric"><span>Trefferquote</span><strong id="metric-winrate">—</strong><small>Nach Kosten</small></article>
+          <article class="metric"><span>Paper Equity</span><strong id="metric-equity">—</strong><small id="metric-positions">0 Positionen</small></article>
+        </section>
+
+        <section class="workspace-grid">
+          <article class="panel chart-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Visualisierung</p>
+                <h2>Strategie-Charts</h2>
+              </div>
+              <span id="chart-count" class="counter">0 Charts</span>
+            </div>
+            <div id="chart-tabs" class="chart-tabs" role="tablist" aria-label="Chart auswählen"></div>
+            <div id="chart-stage" class="chart-stage">
+              <div class="empty-visual">
+                <span aria-hidden="true">⌁</span>
+                <strong>Noch kein Chart</strong>
+                <p>Starte einen Scan. Entry, Stop, Ziel, Trendlinien und Volumen erscheinen hier.</p>
+              </div>
+            </div>
+          </article>
+
+          <aside class="panel strategy-panel" aria-labelledby="strategy-title">
+            <div class="panel-heading compact">
+              <div>
+                <p class="eyebrow">Regime-Logik</p>
+                <h2 id="strategy-title">Strategie-Matrix</h2>
+              </div>
+            </div>
+            <ul class="strategy-list">
+              <li><i class="signal breakout"></i><div><strong>Momentum Breakout</strong><span>Trend + oberes Band + Volumen + relative Stärke</span></div></li>
+              <li><i class="signal pullback"></i><div><strong>Trend Pullback</strong><span>Intakter Aufwärtstrend mit kontrolliertem Rücksetzer</span></div></li>
+              <li><i class="signal reversion"></i><div><strong>Range Mean Reversion</strong><span>Überverkauft in stabiler Seitwärtsstruktur</span></div></li>
+              <li><i class="signal cash"></i><div><strong>Cash Defensive</strong><span>Kein Setup, Abwärtstrend oder extreme Volatilität</span></div></li>
+            </ul>
+            <div class="risk-box">
+              <div><span>Risiko / Trade</span><strong id="risk-per-trade">—</strong></div>
+              <div><span>Max. Exposure</span><strong id="max-exposure">—</strong></div>
+              <div><span>Max. Positionen</span><strong id="max-positions">—</strong></div>
+              <div><span>Signal-Schwelle</span><strong id="probability-threshold">—</strong></div>
+            </div>
+          </aside>
+        </section>
+
+        <section class="panel market-panel" aria-labelledby="market-title">
+          <div class="panel-heading market-heading">
+            <div>
+              <p class="eyebrow">Entscheidungstabelle</p>
+              <h2 id="market-title">Marktplan</h2>
+            </div>
+            <div class="filters" aria-label="Marktplan filtern">
+              <label>
+                <span class="sr-only">Coin suchen</span>
+                <input id="search-input" type="search" placeholder="Coin suchen …" autocomplete="off">
+              </label>
+              <label>
+                <span class="sr-only">Aktion filtern</span>
+                <select id="action-filter">
+                  <option value="ALL">Alle Aktionen</option>
+                  <option value="PAPER_BUY">Paper Buy</option>
+                  <option value="WATCH">Watch / blockiert</option>
+                </select>
+              </label>
+              <label>
+                <span class="sr-only">Strategie filtern</span>
+                <select id="strategy-filter">
+                  <option value="ALL">Alle Strategien</option>
+                  <option value="MOMENTUM_BREAKOUT">Momentum Breakout</option>
+                  <option value="TREND_PULLBACK">Trend Pullback</option>
+                  <option value="RANGE_MEAN_REVERSION">Mean Reversion</option>
+                  <option value="CASH_DEFENSIVE">Cash Defensive</option>
+                </select>
+              </label>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Coin</th>
+                  <th>Regime</th>
+                  <th>Strategie</th>
+                  <th>p(up)</th>
+                  <th>Strategie-Historie</th>
+                  <th>Netto-Erwartung</th>
+                  <th>Aktion</th>
+                  <th>Entry</th>
+                  <th>Stop</th>
+                  <th>Ziel</th>
+                  <th>Gewicht</th>
+                </tr>
+              </thead>
+              <tbody id="plan-body">
+                <tr class="empty-row"><td colspan="11">Noch keine Analyse. Der Marktplan bleibt leer.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p id="table-summary" class="table-summary">0 Assets</p>
+        </section>
+
+        <section class="portfolio-grid">
+          <article class="panel portfolio-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Simuliertes Konto</p>
+                <h2>Paper-Portfolio</h2>
+              </div>
+              <span id="portfolio-status" class="badge neutral">NICHT AKTUALISIERT</span>
+            </div>
+            <div id="portfolio-positions" class="position-list">
+              <div class="empty-inline">Keine simulierten Positionen.</div>
+            </div>
+          </article>
+          <article class="panel log-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Letzte Aktivität</p>
+                <h2>Paper-Protokoll</h2>
+              </div>
+            </div>
+            <ol id="activity-log" class="activity-log">
+              <li><span>System</span><p>Bereit für den ersten Scan.</p></li>
+            </ol>
+          </article>
+        </section>
+
+        <footer>
+          <p><strong>Research &amp; Paper-Trading only.</strong> Wahrscheinlichkeiten sind keine Garantien. Krypto kann vollständig an Wert verlieren.</p>
+          <p id="timestamp-line">Keine Daten geladen.</p>
+        </footer>
+      </main>
+    </div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="/app.js" defer></script>
+  </body>
+</html>

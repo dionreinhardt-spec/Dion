@@ -1,0 +1,41 @@
+market:
+  vs_currency: usd
+  universe_size: 25
+  lookback_days: 365
+  horizon_days: 7
+  min_market_cap: 50000000
+  min_daily_volume: 1000000
+  request_delay_seconds: 1.3
+  cache_ttl_seconds: 3600
+
+model:
+  minimum_training_days: 150
+  minimum_validation_rows: 100
+  probability_threshold: 0.60
+  probability_cap_low: 0.10
+  probability_cap_high: 0.85
+  shrinkage_to_base_rate: 0.25
+  calibration_bins: 8
+
+strategy:
+  minimum_asset_observations: 5
+  minimum_pooled_observations: 40
+  minimum_smoothed_win_rate: 0.50
+  minimum_expected_net_return: 0.0
+  require_confirmation: true
+  high_volatility_cutoff: 1.25
+  chart_lookback_days: 120
+  minimum_backtest_trades: 20
+
+risk:
+  starting_cash: 100000
+  risk_per_trade: 0.005
+  max_position_fraction: 0.10
+  max_portfolio_exposure: 0.40
+  max_positions: 5
+  min_stop_fraction: 0.04
+  max_stop_fraction: 0.18
+  stop_volatility_multiple: 2.0
+  reward_risk_ratio: 2.0
+  fee_bps_per_side: 10
+  slippage_bps_per_side: 15
