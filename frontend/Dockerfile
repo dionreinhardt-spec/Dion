@@ -4,7 +4,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 COPY frontend/package*.json ./
 RUN npm ci
 COPY frontend/ ./
-ENV BACKEND_URL=http://backend:8000
+ENV BACKEND_URL=http://axiom-intelligence.railway.internal:8000
 RUN npm run build
 
 FROM node:24-alpine
