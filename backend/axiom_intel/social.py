@@ -27,7 +27,7 @@ class SocialEngine:
     def __init__(self, settings, store, providers):
         self.settings, self.store, self.providers = settings, store, providers
         self.posts: list[SocialPost] = []
-        self.status = {"x": "disabled", "telegram": "disabled", "last_error": None}
+        self.status = {"x": "disabled", "telegram": "disabled", "reddit": "disabled", "tiktok": "not-available", "last_error": None}
 
     async def start(self):
         self.posts = [SocialPost.model_validate(p) for p in await self.store.load_events(time.time() - 3600, "social", 10000)]
@@ -165,3 +165,48 @@ class SocialEngine:
             r = await client.post("https://api.telegram.org/bot" + s.telegram_bot_token.get_secret_value() + "/sendMessage",
                                   json={"chat_id": s.telegram_alert_chat_id, "text": text, "disable_web_page_preview": True})
             r.raise_for_status()
+
+    async def run_reddit(self):
+        """Read public subreddit posts via approved Reddit OAuth credentials only."""
+        import httpx
+        s = self.settings
+        if not s.reddit_client_id or not s.reddit_client_secret or not s.reddit_subreddits:
+            return
+        names = [n.strip().removeprefix("r/") for n in s.reddit_subreddits.split(",") if n.strip()]
+        if not names or any(not re.fullmatch(r"[A-Za-z0-9_]{2,21}", n) for n in names):
+            self.status["reddit"] = "invalid-configuration"
+            return
+        self.status["reddit"] = "configured"
+        auth = (s.reddit_client_id.get_secret_value(), s.reddit_client_secret.get_secret_value())
+        headers = {"User-Agent": s.reddit_user_agent}
+        async with httpx.AsyncClient(timeout=25, headers=headers) as client:
+            while True:
+                try:
+                    token_response = await client.post(
+                        "https://www.reddit.com/api/v1/access_token",
+                        auth=auth, data={"grant_type": "client_credentials"})
+                    token_response.raise_for_status()
+                    access_token = token_response.json()["access_token"]
+                    for name in names:
+                        response = await client.get(
+                            f"https://oauth.reddit.com/r/{name}/new",
+                            headers={"Authorization": f"Bearer {access_token}"},
+                            params={"limit": 50, "raw_json": 1})
+                        response.raise_for_status()
+                        for item in response.json().get("data", {}).get("children", []):
+                            p = item.get("data", {})
+                            if not p.get("id") or not p.get("created_utc"):
+                                continue
+                            text = (p.get("title") or "") + "\n" + (p.get("selftext") or "")
+                            await self.ingest(SocialPost(
+                                id="reddit:" + p["id"], platform="reddit",
+                                author=p.get("author") or "[deleted]", text=text,
+                                timestamp=float(p["created_utc"]), received_at=time.time(),
+                                url="https://www.reddit.com" + p.get("permalink", ""),
+                                likes=max(0, int(p.get("score") or 0))))
+                    self.status["reddit"] = "connected"
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:
+                    self.status.update(reddit="degraded", last_error=type(exc).__name__)
+                await asyncio.sleep(s.reddit_poll_s)
