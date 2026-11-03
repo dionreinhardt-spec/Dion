@@ -98,7 +98,7 @@ class Engine:
                                asyncio.create_task(self.security_loop(), name="security"),
                                asyncio.create_task(self.quote_loop(), name="usd-prices"),
                                asyncio.create_task(self.social.run_x(), name="x"),
-                               asyncio.create_task(self.social.run_telegram(), name="telegram")])
+                               asyncio.create_task(self.social.run_telegram(), name="telegram"),\n                               asyncio.create_task(self.social.run_reddit(), name="reddit")])
             self.tasks.extend(asyncio.create_task(self.worker(self.queue), name=f"decode-pump-{i}") for i in range(2))
             if self.settings.watch_pumpswap:
                 self.tasks.append(asyncio.create_task(self.worker(self.pool_queue), name="decode-pumpswap"))
