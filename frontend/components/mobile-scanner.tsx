@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { ArrowUpRight, ChevronRight, Clock3 } from "lucide-react";
+import { Activity, ArrowUpRight, ChevronRight, Clock3 } from "lucide-react";
 import type { Token } from "../app/types";
 import { windowLabel } from "../lib/scanner-filters";
 const usd = (n: number | null | undefined) =>
@@ -18,12 +18,14 @@ export function MobileScanner({
   trending = false,
   selected,
   onSelect,
+  onChart,
 }: {
   tokens: Token[];
   windowKey: string;
   trending?: boolean;
   selected?: string;
   onSelect(token: string): void;
+  onChart(token: Token): void;
 }) {
   const [visible, setVisible] = useState(30);
   return (
@@ -31,15 +33,13 @@ export function MobileScanner({
       {tokens.slice(0, visible).map((coin, index) => {
         const flow = coin.windows[windowKey];
         return (
-          <button
-            type="button"
+          <article
             key={coin.token}
             className={
               "coin-card " + (selected === coin.token ? "selected" : "")
             }
-            onClick={() => onSelect(coin.token)}
-            aria-label={coin.symbol + " analysieren"}
           >
+            <button type="button" className="coin-card-select" onClick={() => onSelect(coin.token)} aria-label={coin.symbol + " analysieren"}>
             <div className="coin-card-head">
               {trending && <span className="trend-rank">#{index + 1}</span>}
               <span className="token-icon">
@@ -95,6 +95,7 @@ export function MobileScanner({
               </div>
             </dl>
             {coin.window_coverage?.[windowKey]?.complete === false && <p className="coin-data-note">Zeitfenster nur teilweise beobachtet · Werte sind ein Ausschnitt.</p>}
+            </button>
             <div className="coin-card-foot">
               <span
                 className={
@@ -118,11 +119,12 @@ export function MobileScanner({
                   ? "Keine Trades"
                   : coin.trade_age_s.toFixed(1) + "s"}
               </span>
-              <span className="coin-card-open">
-                Analyse <ArrowUpRight size={12} />
-              </span>
+              <div className="coin-card-actions">
+                <button type="button" className="coin-chart-btn" aria-label={"Chart für " + coin.symbol + " öffnen"} onClick={() => onChart(coin)}><Activity size={14} /> Chart</button>
+                <button type="button" className="coin-card-open" onClick={() => onSelect(coin.token)} aria-label={coin.symbol + " analysieren"}>Analyse <ArrowUpRight size={12} /></button>
+              </div>
             </div>
-          </button>
+          </article>
         );
       })}
       {tokens.length > visible && (

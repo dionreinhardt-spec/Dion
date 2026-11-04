@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import {
   Activity,
@@ -32,6 +33,8 @@ import {
   Zap,
 } from "lucide-react";
 import type { Snapshot, Token } from "./types";
+import type { ChartSelection } from "../lib/coin-chart";
+const TokenChart = dynamic(() => import("../components/token-chart"), { ssr: false, loading: () => <div className="chart-module-loading">Chart wird vorbereitet …</div> });
 import { MobilePositions } from "../components/mobile-positions";
 import { MobileScanner } from "../components/mobile-scanner";
 import { ScannerFilters } from "../components/scanner-filters";
@@ -175,6 +178,7 @@ export default function Terminal() {
     Record<string, { t: number; p: number }[]>
   >({});
   const [sessionLocked, setSessionLocked] = useState(false);
+  const [chartToken, setChartToken] = useState<ChartSelection | null>(null);
   const [isPhone, setIsPhone] = useState(false);
   const [mobileAnalystOpen, setMobileAnalystOpen] = useState(false);
   const [more, setMore] = useState(false);
@@ -188,7 +192,7 @@ export default function Terminal() {
     return () => media.removeEventListener("change", update);
   }, []);
   useEffect(() => {
-    if (!settings && !order && !more && !(isPhone && mobileAnalystOpen)) return;
+    if (!settings && !order && !more && !chartToken && !(isPhone && mobileAnalystOpen)) return;
     const previous = document.activeElement as HTMLElement | null;
     const modal =
       document.querySelector<HTMLElement>(".modal") ||
@@ -203,6 +207,7 @@ export default function Terminal() {
         setOrder(null);
         setMore(false);
         setMobileAnalystOpen(false);
+        setChartToken(null);
       }
       if (e.key === "Tab" && modal) {
         const elements = Array.from(
@@ -227,7 +232,7 @@ export default function Terminal() {
       document.body.style.overflow = previousOverflow;
       previous?.focus();
     };
-  }, [settings, order, more, mobileAnalystOpen, isPhone]);
+  }, [settings, order, more, mobileAnalystOpen, isPhone, chartToken]);
   const lastCandidates = useRef(new Set<string>()),
     audioRef = useRef<AudioContext | null>(null),
     soundRef = useRef(false);
@@ -297,6 +302,10 @@ export default function Terminal() {
   function selectCoin(token: string) {
     setSelected(token);
     if (isPhone) setMobileAnalystOpen(true);
+  }
+  function openChart(token: Token) {
+    setChartToken({ token: token.token, chain: token.chain, symbol: token.symbol });
+    setMobileAnalystOpen(false); setSettings(false); setMore(false);
   }
   function orderKey() {
     if (!window.isSecureContext || !crypto.randomUUID)
@@ -643,12 +652,14 @@ export default function Terminal() {
                     trending={viewFilters.preset === "trending"}
                     selected={coin?.token}
                     onSelect={selectCoin}
+                    onChart={token => openChart(token)}
                   />
                   <div className="table-scroll scanner-desktop-table">
                     <table className="scanner-table">
                       <thead>
                         <tr>
                           <th>Token / Chain</th>
+                          <th>Chart</th>
                           <th>Market cap</th>
                           <th>Liquidity</th>
                           <th>Vol. 5m</th>
@@ -690,6 +701,7 @@ export default function Terminal() {
                                   </span>
                                 </button>
                               </td>
+                              <td><button type="button" className="coin-chart-btn" aria-label={"Chart für " + c.symbol + " öffnen"} onClick={event => { event.stopPropagation(); openChart(c); }}><Activity size={14} /> Chart</button></td>
                               <td>{money(c.market?.market_cap)}</td>
                               <td>{money(c.market?.liquidity_usd)}</td>
                               <td>{money(c.market?.volume_5m)}</td>
@@ -749,7 +761,7 @@ export default function Terminal() {
                         ? coin.symbol + " · observed trade price"
                         : "Trade price monitor"}
                     </h2>
-                    <span className="dim mono">{price(coin?.price_usd)}</span>
+                    <button type="button" className="coin-chart-btn" disabled={!coin} onClick={() => coin && openChart(coin)}><Activity size={14} /> TradingView Chart</button>
                   </div>
                   {chart.length > 1 ? (
                     <>
@@ -919,6 +931,7 @@ export default function Terminal() {
                       </div>
                       <Score value={coin.score} />
                     </div>
+                    <button type="button" className="analyst-chart-btn" onClick={() => openChart(coin)}><Activity size={17} /> TradingView Chart öffnen</button>
                     <div className="contract">
                       <code>{coin.token}</code>
                       <button
@@ -1596,6 +1609,18 @@ export default function Terminal() {
           setSettings(true);
         }}
       />
+      {chartToken && (
+        <div className="modal-backdrop token-chart-backdrop">
+          <section className="modal token-chart-modal" role="dialog" aria-modal="true" aria-labelledby="token-chart-title">
+            <div className="token-chart-dialog-head">
+              <div><span className="eyebrow">TRADINGVIEW · POOL-CHART</span><h2 id="token-chart-title">{chartToken.symbol} <small>{chartToken.chain.toUpperCase()}</small></h2></div>
+              <button type="button" className="icon-btn token-chart-close" aria-label="Chart schließen" onClick={() => setChartToken(null)}><X size={22} /></button>
+            </div>
+            <code className="token-chart-contract">{chartToken.token}</code>
+            <TokenChart key={chartToken.chain + ":" + chartToken.token} selection={chartToken} />
+          </section>
+        </div>
+      )}
       {toast && (
         <div className="toast" role="status">
           <Activity size={16} />
