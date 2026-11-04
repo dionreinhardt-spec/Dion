@@ -38,12 +38,12 @@ export function suspiciousFlow(flow: Flow | undefined): boolean {
 }
 
 /** Activity classification only; never changes token.status or plan.allowed. */
-export function hasRecentActivity(token: Token, context: ScannerContext): boolean {
+export function hasRecentActivity(token: Token, context: ScannerContext, maxTradeAgeSeconds = 15): boolean {
   if (!context.fresh || !context.connected || !finite(context.serverTime)) return false;
   if (!finite(token.last_event_at) || !finite(token.evaluated_at)) return false;
   const tradeAge = context.serverTime - token.last_event_at;
   const evaluationAge = context.serverTime - token.evaluated_at;
-  return tradeAge >= -3 && tradeAge <= 15 && evaluationAge >= -3 && evaluationAge <= 5;
+  return tradeAge >= -3 && tradeAge <= maxTradeAgeSeconds && evaluationAge >= -3 && evaluationAge <= 5;
 }
 
 function sortValue(token: Token, filters: ScannerFilterState): number | null {
@@ -66,7 +66,9 @@ export function selectScannerTokens(tokens: readonly Token[], filters: ScannerFi
     if (filters.status !== "all" && token.status !== filters.status) return false;
     if (liquidity > 0 && (!finite(token.market?.liquidity_usd) || token.market.liquidity_usd < liquidity)) return false;
     if (filters.preset === "all") return true;
-    if (!hasRecentActivity(token, context)) return false;
+    const seconds = Number(filters.windowKey);
+    const ageLimit = filters.preset === "entries" ? 15 : Number.isFinite(seconds) && seconds > 0 ? seconds : 60;
+    if (!hasRecentActivity(token, context, ageLimit)) return false;
     if (filters.preset === "entries") return token.status === "ENTRY_CANDIDATE";
     const flow = token.windows?.[filters.windowKey];
     if (!flow || (filters.hideSuspicious && suspiciousFlow(flow))) return false;

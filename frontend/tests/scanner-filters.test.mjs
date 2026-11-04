@@ -62,3 +62,9 @@ test('partial observed windows can show observed buyers without claiming coverag
   assert.equal(value.window_coverage['60'].complete,false);
   assert.equal(value.plan.allowed,false);
 });
+
+test('one-minute trend includes observed buying 45 seconds ago but a 30-second window does not', () => {
+  const value=token('within-minute',100,{last_event_at:955,windows:{'60':flow(100),'30':flow(0)}});
+  assert.equal(selectScannerTokens([value],filters(),context).length,1);
+  assert.equal(selectScannerTokens([value],filters({windowKey:'30'}),context).length,0);
+});

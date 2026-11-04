@@ -88,8 +88,8 @@ export function ScannerFilters({ value, onChange, count, total, ready }: {
         <strong>{value.preset === "trending" ? `Mindestens ${value.minBuyers} Käufer-Wallets in ${windowLabel(value.windowKey)}`
           : value.preset === "inflow" ? `Positiver Nettozufluss in ${windowLabel(value.windowKey)}`
           : value.preset === "entries" ? "Nur vom Backend freigegebene Entry-Kandidaten" : "Deine beobachteten Tokens"}</strong>
-        <p>{value.preset === "trending" ? "Verschiedene Wallet-Adressen, keine belegte Personenzahl. Letzter Trade höchstens 15 Sekunden alt. Trend ist kein Kaufsignal."
-          : value.preset === "inflow" ? "Mindestens 80 % der beobachteten Trades mit USD-Bewertung. Letzter Trade höchstens 15 Sekunden alt."
+        <p>{value.preset === "trending" ? "Gezählt werden beobachtete Wallet-Adressen im gewählten Zeitraum, keine belegten Personen. Trend ist kein Kaufsignal."
+          : value.preset === "inflow" ? "Mindestens 80 % der beobachteten Trades im gewählten Zeitraum mit USD-Bewertung."
           : "Sortierung und Filter gelten für den beobachteten Ausschnitt, nicht für alle Tokens der Chain."}</p>
         {!ready && value.preset !== "all" && <p className="scanner-stale-note">Pausiert: Für diesen Filter fehlen gerade frische On-Chain-Daten.</p>}
       </div>
