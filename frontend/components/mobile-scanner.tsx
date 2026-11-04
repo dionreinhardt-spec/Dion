@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { ArrowUpRight, ChevronRight, Clock3 } from "lucide-react";
 import type { Token } from "../app/types";
+import { windowLabel } from "../lib/scanner-filters";
 const usd = (n: number | null | undefined) =>
   n == null
     ? "—"
@@ -14,18 +15,20 @@ const usd = (n: number | null | undefined) =>
 export function MobileScanner({
   tokens,
   windowKey,
+  trending = false,
   selected,
   onSelect,
 }: {
   tokens: Token[];
   windowKey: string;
+  trending?: boolean;
   selected?: string;
   onSelect(token: string): void;
 }) {
   const [visible, setVisible] = useState(30);
   return (
     <div className="mobile-scanner" aria-label="Token-Karten">
-      {tokens.slice(0, visible).map((coin) => {
+      {tokens.slice(0, visible).map((coin, index) => {
         const flow = coin.windows[windowKey];
         return (
           <button
@@ -38,6 +41,7 @@ export function MobileScanner({
             aria-label={coin.symbol + " analysieren"}
           >
             <div className="coin-card-head">
+              {trending && <span className="trend-rank">#{index + 1}</span>}
               <span className="token-icon">
                 {coin.symbol.slice(0, 2).toUpperCase()}
               </span>
@@ -57,6 +61,7 @@ export function MobileScanner({
               </span>
               <ChevronRight size={17} />
             </div>
+            {trending && <div className="coin-trending-buyers"><strong>{flow?.unique_buyers ?? "—"}</strong><span>verschiedene Käufer-Wallets<br />in {windowLabel(windowKey)}</span><b>TREND</b></div>}
             <dl className="coin-card-metrics">
               <div>
                 <dt>Market Cap</dt>
@@ -75,20 +80,21 @@ export function MobileScanner({
                       ? Number(windowKey) / 60 + "m"
                       : Number(windowKey) / 3600 + "h"}
                 </dt>
-                <dd className={(flow.net_flow_usd || 0) < 0 ? "red" : "mint"}>
-                  {flow.net_flow_usd != null && flow.net_flow_usd > 0
+                <dd className={(flow?.net_flow_usd || 0) < 0 ? "red" : "mint"}>
+                  {flow?.net_flow_usd != null && flow?.net_flow_usd > 0
                     ? "+"
                     : ""}
-                  {usd(flow.net_flow_usd)}
+                  {usd(flow?.net_flow_usd)}
                 </dd>
               </div>
               <div>
-                <dt>Käufer / Verkäufer</dt>
+                <dt>Käufer- / Verkäufer-Wallets</dt>
                 <dd>
-                  {flow.unique_buyers} <span>/ {flow.unique_sellers}</span>
+                  {flow?.unique_buyers ?? "—"} <span>/ {flow?.unique_sellers ?? "—"}</span>
                 </dd>
               </div>
             </dl>
+            {coin.window_coverage?.[windowKey]?.complete === false && <p className="coin-data-note">Zeitfenster nur teilweise beobachtet · Werte sind ein Ausschnitt.</p>}
             <div className="coin-card-foot">
               <span
                 className={
