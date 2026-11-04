@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import {
   Activity,
@@ -32,8 +33,12 @@ import {
   Zap,
 } from "lucide-react";
 import type { Snapshot, Token } from "./types";
+import type { ChartSelection } from "../lib/coin-chart";
+const TokenChart = dynamic(() => import("../components/token-chart"), { ssr: false, loading: () => <div className="chart-module-loading">Chart wird vorbereitet …</div> });
 import { MobilePositions } from "../components/mobile-positions";
 import { MobileScanner } from "../components/mobile-scanner";
+import { ScannerFilters } from "../components/scanner-filters";
+import { DEFAULT_SCANNER_FILTERS, selectScannerTokens, type ScannerFilterState } from "../lib/scanner-filters";
 import { MobileNavigation } from "../components/mobile-navigation";
 import { assertActionAllowed } from "../lib/action-policy";
 import { useTerminalConnection } from "../lib/use-terminal-connection";
@@ -158,9 +163,8 @@ export default function Terminal() {
   const [data, setData] = useState<Snapshot | null>(null),
     [tab, setTab] = useState("scanner"),
     [selected, setSelected] = useState("");
-  const [query, setQuery] = useState(""),
-    [windowKey, setWindowKey] = useState("30"),
-    [filter, setFilter] = useState("all");
+  const [scannerFilters, setScannerFilters] = useState<ScannerFilterState>({ ...DEFAULT_SCANNER_FILTERS });
+  const query = scannerFilters.query, windowKey = scannerFilters.windowKey;
   const [apiToken, setApiToken] = useState(""),
     [draftToken, setDraftToken] = useState("");
   const [settings, setSettings] = useState(false),
@@ -174,6 +178,7 @@ export default function Terminal() {
     Record<string, { t: number; p: number }[]>
   >({});
   const [sessionLocked, setSessionLocked] = useState(false);
+  const [chartToken, setChartToken] = useState<ChartSelection | null>(null);
   const [isPhone, setIsPhone] = useState(false);
   const [mobileAnalystOpen, setMobileAnalystOpen] = useState(false);
   const [more, setMore] = useState(false);
@@ -187,7 +192,7 @@ export default function Terminal() {
     return () => media.removeEventListener("change", update);
   }, []);
   useEffect(() => {
-    if (!settings && !order && !more && !(isPhone && mobileAnalystOpen)) return;
+    if (!settings && !order && !more && !chartToken && !(isPhone && mobileAnalystOpen)) return;
     const previous = document.activeElement as HTMLElement | null;
     const modal =
       document.querySelector<HTMLElement>(".modal") ||
@@ -202,6 +207,7 @@ export default function Terminal() {
         setOrder(null);
         setMore(false);
         setMobileAnalystOpen(false);
+        setChartToken(null);
       }
       if (e.key === "Tab" && modal) {
         const elements = Array.from(
@@ -226,7 +232,7 @@ export default function Terminal() {
       document.body.style.overflow = previousOverflow;
       previous?.focus();
     };
-  }, [settings, order, more, mobileAnalystOpen, isPhone]);
+  }, [settings, order, more, mobileAnalystOpen, isPhone, chartToken]);
   const lastCandidates = useRef(new Set<string>()),
     audioRef = useRef<AudioContext | null>(null),
     soundRef = useRef(false);
@@ -297,26 +303,31 @@ export default function Terminal() {
     setSelected(token);
     if (isPhone) setMobileAnalystOpen(true);
   }
+  function openChart(token: Token) {
+    setChartToken({ token: token.token, chain: token.chain, symbol: token.symbol });
+    setMobileAnalystOpen(false); setSettings(false); setMore(false);
+  }
   function orderKey() {
     if (!window.isSecureContext || !crypto.randomUUID)
       throw new Error("Vertrauenswürdige HTTPS-Verbindung erforderlich");
     return crypto.randomUUID();
   }
 
-  const coins = data?.scanner || [],
-    coin = coins.find((c) => c.token === selected) || coins[0];
-  const filtered = useMemo(
-    () =>
-      coins.filter(
-        (c) =>
-          (c.symbol + " " + c.token)
-            .toLowerCase()
-            .includes(query.toLowerCase()) &&
-          (filter === "all" || c.status === filter) &&
-          (tab !== "opportunities" || c.status === "ENTRY_CANDIDATE"),
-      ),
-    [coins, query, filter, tab],
-  );
+  const coins = data?.scanner || [];
+  const scannerContext = useMemo(() => ({
+    fresh: connection.ready,
+    connected: !!data?.system.solana.connected,
+    serverTime: data?.server_time ?? null,
+  }), [connection.ready, data?.system.solana.connected, data?.server_time]);
+  const viewFilters = useMemo<ScannerFilterState>(() => tab === "opportunities"
+    ? { ...scannerFilters, preset: "entries", status: "all" } : scannerFilters, [scannerFilters, tab]);
+  const filtered = useMemo(() => selectScannerTokens(coins, viewFilters, scannerContext), [coins, viewFilters, scannerContext]);
+  const trendingCount = useMemo(() => selectScannerTokens(coins, {
+    ...scannerFilters, preset: "trending", query: "", status: "all", minLiquidity: 0,
+  }, scannerContext).length, [coins, scannerFilters, scannerContext]);
+  const trendReady = scannerContext.fresh && scannerContext.connected;
+  const analysisCoins = tab === "scanner" || tab === "opportunities" ? filtered : coins;
+  const coin = analysisCoins.find(c => c.token === selected) || analysisCoins[0];
   const candidates = coins.filter((c) => c.status === "ENTRY_CANDIDATE"),
     portfolio = data?.portfolio;
   async function post(path: string, body?: unknown) {
@@ -576,13 +587,16 @@ export default function Terminal() {
             </div>
             <div className="stat">
               <span>
-                Qualified setups <Crosshair size={15} />
+                Jetzt im Trend <Flame size={15} />
               </span>
               <strong className="mint">
-                {data ? candidates.length : "—"}
-                <small>ENTRY CANDIDATES</small>
+                {trendReady ? trendingCount : "—"}
+                <small>KÄUFER-AKTIVITÄT</small>
               </strong>
-              <p>Nach Daten- und Risikoprüfung</p>
+              <button type="button" className="stat-filter-link" onClick={() => {
+                setScannerFilters(previous => ({ ...previous, preset: "trending", query: "", status: "all", minLiquidity: 0, sort: "buyers" }));
+                navigate("scanner");
+              }}>≥ {scannerFilters.minBuyers} Wallets · {WINDOWS.find(w => w.v === windowKey)?.l} ansehen ↗</button>
             </div>
             <div className="stat">
               <span>
@@ -619,63 +633,33 @@ export default function Terminal() {
                     <h2>
                       <Radar size={17} />
                       {tab === "opportunities"
-                        ? "Qualified opportunities"
-                        : "Live market scanner"}
+                        ? "Entry-Kandidaten"
+                        : viewFilters.preset === "trending" ? "Jetzt im Trend" : "Token-Scanner"}
                       <span className="count">{filtered.length}</span>
                     </h2>
                     <div className="source-badge">
                       <i /> CONFIRMED EVENTS
                     </div>
                   </div>
-                  <div className="toolbar">
-                    <label className="search">
-                      <Search size={15} />
-                      <input
-                        placeholder="Token oder Contract suchen…"
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                      />
-                    </label>
-                    <select
-                      aria-label="Signalstatus filtern"
-                      value={filter}
-                      onChange={(e) => setFilter(e.target.value)}
-                    >
-                      <option value="all">Alle Status</option>
-                      <option value="ENTRY_CANDIDATE">Entry candidates</option>
-                      <option value="WATCH">Watch</option>
-                      <option value="BLOCKED">Blocked</option>
-                    </select>
-                    <button
-                      className="small-btn"
-                      onClick={() => setSettings(true)}
-                    >
-                      <SlidersHorizontal size={14} /> Quellen
-                    </button>
-                  </div>
-                  <div className="windowbar">
-                    <span>FLOW WINDOW</span>
-                    {WINDOWS.map((w) => (
-                      <button
-                        key={w.v}
-                        className={windowKey === w.v ? "on" : ""}
-                        onClick={() => setWindowKey(w.v)}
-                      >
-                        {w.l}
-                      </button>
-                    ))}
-                  </div>
+                  <ScannerFilters value={viewFilters} count={filtered.length} total={coins.length} ready={trendReady}
+                    onChange={next => {
+                      setScannerFilters(next);
+                      if (tab === "opportunities" && next.preset !== "entries") navigate("scanner");
+                    }} />
                   <MobileScanner
                     tokens={filtered}
                     windowKey={windowKey}
+                    trending={viewFilters.preset === "trending"}
                     selected={coin?.token}
                     onSelect={selectCoin}
+                    onChart={token => openChart(token)}
                   />
                   <div className="table-scroll scanner-desktop-table">
                     <table className="scanner-table">
                       <thead>
                         <tr>
                           <th>Token / Chain</th>
+                          <th>Chart</th>
                           <th>Market cap</th>
                           <th>Liquidity</th>
                           <th>Vol. 5m</th>
@@ -685,7 +669,7 @@ export default function Terminal() {
                               {WINDOWS.find((w) => w.v === windowKey)?.l}
                             </small>
                           </th>
-                          <th>Buyers</th>
+                          <th>Käufer-Wallets</th>
                           <th>Holders</th>
                           <th>Smart $</th>
                           <th>Score</th>
@@ -717,24 +701,25 @@ export default function Terminal() {
                                   </span>
                                 </button>
                               </td>
+                              <td><button type="button" className="coin-chart-btn" aria-label={"Chart für " + c.symbol + " öffnen"} onClick={event => { event.stopPropagation(); openChart(c); }}><Activity size={14} /> Chart</button></td>
                               <td>{money(c.market?.market_cap)}</td>
                               <td>{money(c.market?.liquidity_usd)}</td>
                               <td>{money(c.market?.volume_5m)}</td>
                               <td
                                 className={
-                                  (f.net_flow_usd || 0) >= 0 ? "mint" : "red"
+                                  (f?.net_flow_usd || 0) >= 0 ? "mint" : "red"
                                 }
                               >
-                                {f.net_flow_usd != null && f.net_flow_usd > 0
+                                {f?.net_flow_usd != null && f?.net_flow_usd > 0
                                   ? "+"
                                   : ""}
-                                {money(f.net_flow_usd)}
+                                {money(f?.net_flow_usd)}
                               </td>
                               <td>
-                                {f.unique_buyers}
+                                {f?.unique_buyers ?? "—"}
                                 <small className="dim">
                                   {" "}
-                                  / {f.unique_sellers} sell
+                                  / {f?.unique_sellers ?? "—"} sell
                                 </small>
                               </td>
                               <td className="dim">—</td>
@@ -752,18 +737,13 @@ export default function Terminal() {
                     </table>
                   </div>
                   {!filtered.length && (
-                    <Empty
-                      title={
-                        tab === "opportunities"
-                          ? "Noch kein qualifiziertes Setup"
-                          : "Warte auf bestätigte On-Chain-Events"
-                      }
-                      detail={
-                        query
-                          ? "Kein Token entspricht deinem Filter."
-                          : "RPC-Verbindung und USD-Preise werden geprüft. Hier erscheinen ausschließlich tatsächlich empfangene Daten."
-                      }
-                    />
+                    <Empty title={coins.length ? "Kein Token passt zu diesen Filtern" : "Warte auf empfangene Tokens"}
+                      detail={coins.length
+                        ? !trendReady && viewFilters.preset !== "all"
+                          ? "Für diesen Filter fehlen gerade frische On-Chain-Daten. Unter Alle Tokens bleibt der letzte Stand sichtbar."
+                          : query ? "Kein Token entspricht deiner Suche. Suche oder Filter zurücksetzen."
+                          : "Kein Treffer ist ebenfalls ein Ergebnis: Schwelle oder Zeitraum unter Weitere Filter ändern oder Alle Tokens wählen."
+                        : "Hier erscheinen ausschließlich tatsächlich empfangene Daten. Es werden keine Trending-Coins erfunden."} />
                   )}
                   <div className="table-footer">
                     <span>
@@ -781,7 +761,7 @@ export default function Terminal() {
                         ? coin.symbol + " · observed trade price"
                         : "Trade price monitor"}
                     </h2>
-                    <span className="dim mono">{price(coin?.price_usd)}</span>
+                    <button type="button" className="coin-chart-btn" disabled={!coin} onClick={() => coin && openChart(coin)}><Activity size={14} /> TradingView Chart</button>
                   </div>
                   {chart.length > 1 ? (
                     <>
@@ -951,6 +931,7 @@ export default function Terminal() {
                       </div>
                       <Score value={coin.score} />
                     </div>
+                    <button type="button" className="analyst-chart-btn" onClick={() => openChart(coin)}><Activity size={17} /> TradingView Chart öffnen</button>
                     <div className="contract">
                       <code>{coin.token}</code>
                       <button
@@ -1628,6 +1609,18 @@ export default function Terminal() {
           setSettings(true);
         }}
       />
+      {chartToken && (
+        <div className="modal-backdrop token-chart-backdrop">
+          <section className="modal token-chart-modal" role="dialog" aria-modal="true" aria-labelledby="token-chart-title">
+            <div className="token-chart-dialog-head">
+              <div><span className="eyebrow">TRADINGVIEW · POOL-CHART</span><h2 id="token-chart-title">{chartToken.symbol} <small>{chartToken.chain.toUpperCase()}</small></h2></div>
+              <button type="button" className="icon-btn token-chart-close" aria-label="Chart schließen" onClick={() => setChartToken(null)}><X size={22} /></button>
+            </div>
+            <code className="token-chart-contract">{chartToken.token}</code>
+            <TokenChart key={chartToken.chain + ":" + chartToken.token} selection={chartToken} />
+          </section>
+        </div>
+      )}
       {toast && (
         <div className="toast" role="status">
           <Activity size={16} />

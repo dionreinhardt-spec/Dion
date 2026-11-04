@@ -39,6 +39,7 @@ export type Token = {
     checked_at: number;
   } | null;
   windows: Record<string, Flow>;
+  window_coverage?: Record<string, { observed_seconds: number; complete: boolean }>;
   score: number;
   confidence: number;
   risk_score: number;

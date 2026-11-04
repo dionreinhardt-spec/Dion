@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
-import { ArrowUpRight, ChevronRight, Clock3 } from "lucide-react";
+import { Activity, ArrowUpRight, ChevronRight, Clock3 } from "lucide-react";
 import type { Token } from "../app/types";
+import { windowLabel } from "../lib/scanner-filters";
 const usd = (n: number | null | undefined) =>
   n == null
     ? "—"
@@ -14,30 +15,33 @@ const usd = (n: number | null | undefined) =>
 export function MobileScanner({
   tokens,
   windowKey,
+  trending = false,
   selected,
   onSelect,
+  onChart,
 }: {
   tokens: Token[];
   windowKey: string;
+  trending?: boolean;
   selected?: string;
   onSelect(token: string): void;
+  onChart(token: Token): void;
 }) {
   const [visible, setVisible] = useState(30);
   return (
     <div className="mobile-scanner" aria-label="Token-Karten">
-      {tokens.slice(0, visible).map((coin) => {
+      {tokens.slice(0, visible).map((coin, index) => {
         const flow = coin.windows[windowKey];
         return (
-          <button
-            type="button"
+          <article
             key={coin.token}
             className={
               "coin-card " + (selected === coin.token ? "selected" : "")
             }
-            onClick={() => onSelect(coin.token)}
-            aria-label={coin.symbol + " analysieren"}
           >
+            <button type="button" className="coin-card-select" onClick={() => onSelect(coin.token)} aria-label={coin.symbol + " analysieren"}>
             <div className="coin-card-head">
+              {trending && <span className="trend-rank">#{index + 1}</span>}
               <span className="token-icon">
                 {coin.symbol.slice(0, 2).toUpperCase()}
               </span>
@@ -57,6 +61,7 @@ export function MobileScanner({
               </span>
               <ChevronRight size={17} />
             </div>
+            {trending && <div className="coin-trending-buyers"><strong>{flow?.unique_buyers ?? "—"}</strong><span>verschiedene Käufer-Wallets<br />in {windowLabel(windowKey)}</span><b>TREND</b></div>}
             <dl className="coin-card-metrics">
               <div>
                 <dt>Market Cap</dt>
@@ -75,20 +80,22 @@ export function MobileScanner({
                       ? Number(windowKey) / 60 + "m"
                       : Number(windowKey) / 3600 + "h"}
                 </dt>
-                <dd className={(flow.net_flow_usd || 0) < 0 ? "red" : "mint"}>
-                  {flow.net_flow_usd != null && flow.net_flow_usd > 0
+                <dd className={(flow?.net_flow_usd || 0) < 0 ? "red" : "mint"}>
+                  {flow?.net_flow_usd != null && flow?.net_flow_usd > 0
                     ? "+"
                     : ""}
-                  {usd(flow.net_flow_usd)}
+                  {usd(flow?.net_flow_usd)}
                 </dd>
               </div>
               <div>
-                <dt>Käufer / Verkäufer</dt>
+                <dt>Käufer- / Verkäufer-Wallets</dt>
                 <dd>
-                  {flow.unique_buyers} <span>/ {flow.unique_sellers}</span>
+                  {flow?.unique_buyers ?? "—"} <span>/ {flow?.unique_sellers ?? "—"}</span>
                 </dd>
               </div>
             </dl>
+            {coin.window_coverage?.[windowKey]?.complete === false && <p className="coin-data-note">Zeitfenster nur teilweise beobachtet · Werte sind ein Ausschnitt.</p>}
+            </button>
             <div className="coin-card-foot">
               <span
                 className={
@@ -112,11 +119,12 @@ export function MobileScanner({
                   ? "Keine Trades"
                   : coin.trade_age_s.toFixed(1) + "s"}
               </span>
-              <span className="coin-card-open">
-                Analyse <ArrowUpRight size={12} />
-              </span>
+              <div className="coin-card-actions">
+                <button type="button" className="coin-chart-btn" aria-label={"Chart für " + coin.symbol + " öffnen"} onClick={() => onChart(coin)}><Activity size={14} /> Chart</button>
+                <button type="button" className="coin-card-open" onClick={() => onSelect(coin.token)} aria-label={coin.symbol + " analysieren"}>Analyse <ArrowUpRight size={12} /></button>
+              </div>
             </div>
-          </button>
+          </article>
         );
       })}
       {tokens.length > visible && (
