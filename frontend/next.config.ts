@@ -3,7 +3,10 @@ const backend = process.env.BACKEND_URL || "http://127.0.0.1:8000";
 const config: NextConfig = {
   output: "standalone",
   async rewrites() {
-    return [{ source: "/api/:path*", destination: `${backend}/api/:path*` }];
+    // Dynamic chart routes must resolve locally before proxying scanner requests.
+    return {
+      fallback: [{ source: "/api/:path*", destination: `${backend}/api/:path*` }],
+    };
   },
   async headers() {
     return [

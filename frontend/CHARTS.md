@@ -8,7 +8,7 @@ The chart includes candlesticks, USD volume, crosshair, pan/zoom, fit-to-view, a
 
 The frontend's Node route `/api/charts/solana/CONTRACT?interval=1m` resolves GeckoTerminal pools by contract address. It requires an exact base-token or quote-token relationship and chooses the highest disclosed liquidity among matching pools. It never searches or substitutes a ticker. Quote-token pools request quote-side prices explicitly. OHLCV data is USD-denominated, sorted, deduplicated and validated; no missing candle or volume is invented.
 
-The new route is served by the existing frontend service before its general backend API rewrite. It does not modify or restart the scanner backend. This version supports Solana chart data only. A new or still-unindexed token may have no public pool/history yet. The dialog then explains that condition instead of showing an unrelated chart.
+The new dynamic route is served by the existing frontend service before its general backend API rewrite, which is explicitly a fallback rewrite. The production manifest check verifies this ordering. It does not modify or restart the scanner backend. This version supports Solana chart data only. A new or still-unindexed token may have no public pool/history yet. The dialog then explains that condition instead of showing an unrelated chart.
 
 ## Operation and limits
 
