@@ -240,7 +240,7 @@ export function createIntelligenceService(options: Options = {}) {
       const rows = currentScans.filter(scan => scan.wallet === label.wallet && freshAt(scan.checkedAt, time));
       return { ...label, checkedAt: rows.length ? Math.min(...rows.map(row => row.checkedAt)) : null, programsChecked: rows.length, complete: rows.length === TOKEN_PROGRAMS.length, nonzeroMints: new Set(rows.flatMap(row => Object.keys(row.balances))).size, error: scanErrors.get(label.wallet) ?? null };
     });
-    const pending = [...heldMints].filter(mint => !tokens.has(mint)).length;
+    const pending = [...heldMints].filter(mint => { const received = tokens.get(mint)?.marketAt; return received == null || !freshAt(received, time, 300); }).length;
     return { serverTime: time, startedAt, sourceAt, wallets, tokens: reports.slice(0, 750), status: { running, rpcCallsLastMinute: calls.filter(t => time - t < 60).length, rpcBudget: budget, rpcErrors, lastRpcSuccess, sourceError, metadataError, holderMode: fullHolders ? "top20" : "launch_wallets", inspected: [...inspected.values()].filter(row => row.checkedAt > 0 && !row.error && freshAt(row.checkedAt, time, 900)).length, observedTokens: observed.size, metadataPending: pending }, scope: "Öffentliche Anbieter-Zuordnungen; bestätigte RPC-Bestände von 8 ausgewählten Wallets, kein Kaufnachweis. Insider-Radar: " + (fullHolders ? "Launch-Bezüge und Top-20-Verteilung" : "bis zu drei Wallets je bestätigtem Launch; Top-20-Holder nicht aktiviert") + "; keine bewiesenen Insider und keine Kaufempfehlung." };
   }
   function start() { if (running) return; running = true; void tick(); timer = setInterval(() => void tick(), 15_000); timer.unref?.(); }

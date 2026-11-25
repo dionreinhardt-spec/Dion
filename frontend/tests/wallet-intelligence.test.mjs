@@ -185,3 +185,8 @@ test('default insider path verifies launch-wallet holdings without the disabled 
   assert.deepEqual(t.inspection.flags.map(f=>f.id),['launch_holder','launch_funding']);
   assert.equal(t.inspection.top3Share,null);assert.ok(!methods.includes('getTokenLargestAccounts'));
 });
+test('metadata coverage counts raw known holdings without a fresh quote as pending',async()=>{
+  const f=fixture();await f.service.scanWallet(label);
+  assert.equal(f.service.snapshot().status.metadataPending,1);
+  assert.equal(f.service.snapshot().tokens[0].priceUsd,null);
+});
