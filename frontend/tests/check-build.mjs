@@ -25,6 +25,7 @@ assert.ok(fs.existsSync('public/sw.js'));
 assert.ok(fs.existsSync('public/offline.html'));
 const routes = JSON.parse(fs.readFileSync('.next/routes-manifest.json', 'utf8'));
 assert.ok(routes.dynamicRoutes.some(route => route.page === '/api/charts/[chain]/[token]'));
+assert.ok(fs.existsSync('.next/server/app/api/intelligence/route.js'));
 assert.ok(routes.rewrites.fallback.some(route => route.source === '/api/:path*'));
 assert.ok(!(routes.rewrites.beforeFiles ?? []).some(route => route.source === '/api/:path*'));
 assert.ok(!(routes.rewrites.afterFiles ?? []).some(route => route.source === '/api/:path*'));

@@ -3,6 +3,8 @@ import { useState } from "react";
 import { Activity, ArrowUpRight, ChevronRight, Clock3 } from "lucide-react";
 import type { Token } from "../app/types";
 import { windowLabel } from "../lib/scanner-filters";
+import { WalletMarks } from "./wallet-intelligence";
+import type { IntelToken } from "../lib/wallet-intelligence";
 const usd = (n: number | null | undefined) =>
   n == null
     ? "—"
@@ -19,6 +21,8 @@ export function MobileScanner({
   selected,
   onSelect,
   onChart,
+  intelligence,
+  intelligenceNow = 0,
 }: {
   tokens: Token[];
   windowKey: string;
@@ -26,6 +30,8 @@ export function MobileScanner({
   selected?: string;
   onSelect(token: string): void;
   onChart(token: Token): void;
+  intelligence?: ReadonlyMap<string, IntelToken>;
+  intelligenceNow?: number;
 }) {
   const [visible, setVisible] = useState(30);
   return (
@@ -96,6 +102,7 @@ export function MobileScanner({
             </dl>
             {coin.window_coverage?.[windowKey]?.complete === false && <p className="coin-data-note">Zeitfenster nur teilweise beobachtet · Werte sind ein Ausschnitt.</p>}
             </button>
+            <div className="coin-intel-marks"><WalletMarks token={intelligence?.get(coin.token)} now={intelligenceNow} /></div>
             <div className="coin-card-foot">
               <span
                 className={

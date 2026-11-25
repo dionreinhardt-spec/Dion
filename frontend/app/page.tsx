@@ -42,10 +42,14 @@ import { DEFAULT_SCANNER_FILTERS, selectScannerTokens, type ScannerFilterState }
 import { MobileNavigation } from "../components/mobile-navigation";
 import { assertActionAllowed } from "../lib/action-policy";
 import { useTerminalConnection } from "../lib/use-terminal-connection";
+import { useWalletIntelligence } from "../lib/use-wallet-intelligence";
+import { WalletMarks, WalletIntelligencePanel } from "../components/wallet-intelligence";
 
 const NAV = [
   { id: "scanner", label: "Live Scanner", icon: Radar },
   { id: "opportunities", label: "Top Opportunities", icon: Crosshair },
+  { id: "kol", label: "KOL-Wallets", icon: Wallet },
+  { id: "insiders", label: "Insider-Radar", icon: ShieldCheck },
   { id: "wallets", label: "Smart Money Radar", icon: Wallet },
   { id: "social", label: "Social & Narratives", icon: Globe2 },
   { id: "launches", label: "New Launches", icon: Flame },
@@ -291,6 +295,8 @@ export default function Terminal() {
     lastCandidates.current = candidates;
   }, []);
   const connection = useTerminalConnection(apiToken, acceptData, sessionLocked);
+  const walletIntel = useWalletIntelligence();
+  const intelByToken = useMemo(() => new Map((walletIntel.snapshot?.tokens ?? []).map(token => [token.token, token])), [walletIntel.snapshot]);
   const error = connection.error;
   const transport = connection.transport;
   function navigate(next: string) {
@@ -646,6 +652,7 @@ export default function Terminal() {
                       setScannerFilters(next);
                       if (tab === "opportunities" && next.preset !== "entries") navigate("scanner");
                     }} />
+                  <div className="intel-scanner-shortcuts"><button type="button" onClick={() => navigate("kol")}><Wallet size={14} /> KOL-Wallets</button><button type="button" onClick={() => navigate("insiders")}><ShieldCheck size={14} /> Insider-Radar</button><span>Bestände und Prüfhinweise · keine Kaufempfehlung</span></div>
                   <MobileScanner
                     tokens={filtered}
                     windowKey={windowKey}
@@ -653,6 +660,8 @@ export default function Terminal() {
                     selected={coin?.token}
                     onSelect={selectCoin}
                     onChart={token => openChart(token)}
+                    intelligence={intelByToken}
+                    intelligenceNow={walletIntel.now}
                   />
                   <div className="table-scroll scanner-desktop-table">
                     <table className="scanner-table">
@@ -671,7 +680,7 @@ export default function Terminal() {
                           </th>
                           <th>Käufer-Wallets</th>
                           <th>Holders</th>
-                          <th>Smart $</th>
+                          <th>KOL / Insider</th>
                           <th>Score</th>
                           <th>State</th>
                         </tr>
@@ -723,7 +732,7 @@ export default function Terminal() {
                                 </small>
                               </td>
                               <td className="dim">—</td>
-                              <td className="dim">—</td>
+                              <td><WalletMarks token={intelByToken.get(c.token)} now={walletIntel.now} showEmpty /></td>
                               <td>
                                 <Score value={c.score} />
                               </td>
@@ -1196,6 +1205,7 @@ export default function Terminal() {
               )}
             </section>
           )}
+          {(tab === "kol" || tab === "insiders") && <WalletIntelligencePanel key={tab} mode={tab} snapshot={walletIntel.snapshot} error={walletIntel.error} now={walletIntel.now} onChart={token => setChartToken({ token: token.token, chain: token.chain, symbol: token.symbol })} />}
           {tab === "wallets" && (
             <section className="panel">
               <div className="panel-heading">
