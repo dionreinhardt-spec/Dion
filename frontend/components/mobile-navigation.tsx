@@ -12,14 +12,17 @@ import {
   Settings2,
   Download,
   ChevronRight,
+  ShieldAlert,
 } from "lucide-react";
 const tabs = [
   { id: "scanner", label: "Scanner", icon: Radar },
   { id: "opportunities", label: "Setups", icon: Crosshair },
   { id: "positions", label: "Positionen", icon: Layers },
-  { id: "social", label: "Social", icon: Globe2 },
+  { id: "insiders", label: "Insider", icon: ShieldAlert },
 ];
 const extra = [
+  { id: "kol", label: "KOL-Wallets · Cupsey & Co.", icon: Wallet },
+  { id: "social", label: "Social & Narratives", icon: Globe2 },
   { id: "wallets", label: "Wallet-Intelligenz", icon: Wallet },
   { id: "launches", label: "Neue Launches", icon: Flame },
   { id: "performance", label: "Paper-Journal", icon: TrendingUp },
